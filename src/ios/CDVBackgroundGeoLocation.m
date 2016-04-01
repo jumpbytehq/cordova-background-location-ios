@@ -59,6 +59,10 @@
     NSInteger distanceFilter;
     NSInteger locationTimeout;
     NSInteger desiredAccuracy;
+    NSString *url;
+    NSString *method;
+    NSMutableDictionary *headers;
+    NSMutableDictionary *params;
     CLActivityType activityType;
 }
 
@@ -148,19 +152,35 @@
 
     if (config[@"desiredAccuracy"]) {
         desiredAccuracy = [self decodeDesiredAccuracy:[config[@"desiredAccuracy"] floatValue]];
-        NSLog(@"    desiredAccuracy: %@", config[@"desiredAccuracy"]);
+        NSLog(@" desiredAccuracy: %@", config[@"desiredAccuracy"]);
     }
     if (config[@"stationaryRadius"]) {
         stationaryRadius = [config[@"stationaryRadius"] intValue];
-        NSLog(@"    stationaryRadius: %@", config[@"stationaryRadius"]);
+        NSLog(@" stationaryRadius: %@", config[@"stationaryRadius"]);
     }
     if (config[@"distanceFilter"]) {
         distanceFilter = [config[@"distanceFilter"] intValue];
-        NSLog(@"    distanceFilter: %@", config[@"distanceFilter"]);
+        NSLog(@" distanceFilter: %@", config[@"distanceFilter"]);
     }
     if (config[@"locationTimeout"]) {
         locationTimeout = [config[@"locationTimeout"] intValue];
-        NSLog(@"    locationTimeout: %@", config[@"locationTimeout"]);
+        NSLog(@" locationTimeout: %@", config[@"locationTimeout"]);
+    }
+    if (config[@"url"]) {
+        url = [config[@"url"] stringValue];
+        NSLog(@" url: %@", config[@"url"]);
+    }
+    if (config[@"method"]) {
+        method = [config[@"method"] stringValue];
+        NSLog(@" method: %@", config[@"method"]);
+    }
+    if (config[@"headers"]) {
+        headers = [NSMutableDictionary dictionaryWithDictionary:[config[@"header"] dictionaryRepresentation ]];
+        NSLog(@" headers: %@", config[@"headers"]);
+    }
+    if (config[@"params"]) {
+        params = [NSMutableDictionary dictionaryWithDictionary:[config[@"params"] dictionaryRepresentation ]];
+        NSLog(@" params: %@", config[@"params"]);
     }
 
     self.syncCallbackId = command.callbackId;
@@ -712,18 +732,20 @@
 
     if (state == UIApplicationStateBackground) {
         // send POST request if in background
-      /*  NSMutableURLRequest *request = 
+        NSMutableURLRequest *request =
         [[NSMutableURLRequest alloc] initWithURL:
          [NSURL URLWithString:@"myUrl.. "]];
 
         [request setHTTPMethod:@"POST"];
         NSError *error;
-        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:0 error:&error];
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:data options:0 error:&error];
         if (jsonData) {
-            // process the data
+//             process the data
+            [request setHTTPBody:jsonData];
+            [[NSURLConnection alloc] initWithRequest:request delegate:self];
         } else {
-            NSLog(@"Unable to serialize the data %@: %@", dictionary, error);
-        }*/
+            NSLog(@"Unable to serialize the data %@: %@", data, error);
+        }
     } else {
         // Build a resultset for javascript callback.
         NSString *locationType = [data objectForKey:@"location_type"];
