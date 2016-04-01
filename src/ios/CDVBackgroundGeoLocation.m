@@ -92,7 +92,7 @@
     isUpdatingLocation = NO;
     stationaryLocation = nil;
     stationaryRegion = nil;
-    isDebugging = NO;
+    isDebugging = YES;
     stopOnTerminate = NO;
 
     maxStationaryLocationAttempts   = 4;
@@ -109,7 +109,7 @@
 - (BOOL)isAuthorized
 {
     BOOL authorizationStatusClassPropertyAvailable = [CLLocationManager respondsToSelector:@selector(authorizationStatus)]; // iOS 4.2+
-
+    
     if (authorizationStatusClassPropertyAvailable) {
         NSUInteger authStatus = [CLLocationManager authorizationStatus];
 #ifdef __IPHONE_8_0
@@ -120,7 +120,7 @@
 #endif
         return (authStatus == kCLAuthorizationStatusAuthorized) || (authStatus == kCLAuthorizationStatusNotDetermined);
     }
-
+    
     // by default, assume YES (for iOS < 4.2)
     return YES;
 }
@@ -130,7 +130,7 @@
 {
     BOOL locationServicesEnabledInstancePropertyAvailable = [locationManager respondsToSelector:@selector(locationServicesEnabled)]; // iOS 3.x
     BOOL locationServicesEnabledClassPropertyAvailable = [CLLocationManager respondsToSelector:@selector(locationServicesEnabled)]; // iOS 4.x
-
+    
     if (locationServicesEnabledClassPropertyAvailable) { // iOS 4.x
         return [CLLocationManager locationServicesEnabled];
     } else if (locationServicesEnabledInstancePropertyAvailable) { // iOS 2.x, iOS 3.x
@@ -148,8 +148,21 @@
  */
 - (void) configure:(CDVInvokedUrlCommand*)command
 {
-    NSDictionary *config = [command.arguments objectAtIndex:0];
+    // Params.
+    //    0                    1               2                 3           4          5                  6                7               8
+    //[stationaryRadius, distanceFilter, locationTimeout, desiredAccuracy, debug, notificationTitle, notificationText, activityType, stopOnTerminate]
 
+    // UNUSED ANDROID VARS
+//    stationaryRadius    = [[command.arguments objectAtIndex: 0] intValue];
+//    distanceFilter      = [[command.arguments objectAtIndex: 1] intValue];
+//    locationTimeout     = [[command.arguments objectAtIndex: 2] intValue];
+//    desiredAccuracy     = [self decodeDesiredAccuracy:[[command.arguments objectAtIndex: 3] intValue]];
+//    isDebugging         = [[command.arguments objectAtIndex: 4] boolValue];
+//    activityType        = [self decodeActivityType:[command.arguments objectAtIndex:7]];
+//    stopOnTerminate     = [[command.arguments objectAtIndex: 8] boolValue];
+
+    NSDictionary *config = [command.arguments objectAtIndex:0];
+    
     if (config[@"desiredAccuracy"]) {
         desiredAccuracy = [self decodeDesiredAccuracy:[config[@"desiredAccuracy"] floatValue]];
         NSLog(@" desiredAccuracy: %@", config[@"desiredAccuracy"]);
@@ -167,22 +180,22 @@
         NSLog(@" locationTimeout: %@", config[@"locationTimeout"]);
     }
     if (config[@"url"]) {
-        url = [config[@"url"] stringValue];
+        url = config[@"url"];
         NSLog(@" url: %@", config[@"url"]);
     }
     if (config[@"method"]) {
-        method = [config[@"method"] stringValue];
+        method = config[@"method"] ;
         NSLog(@" method: %@", config[@"method"]);
     }
     if (config[@"headers"]) {
-        headers = [NSMutableDictionary dictionaryWithDictionary:[config[@"header"] dictionaryRepresentation ]];
-        NSLog(@" headers: %@", config[@"headers"]);
+        headers = config[@"headers"];
+        NSLog(@" headers: %@", headers);
     }
     if (config[@"params"]) {
-        params = [NSMutableDictionary dictionaryWithDictionary:[config[@"params"] dictionaryRepresentation ]];
-        NSLog(@" params: %@", config[@"params"]);
+        params = config[@"params"];
+        NSLog(@" params: %@", params);
     }
-
+    
     self.syncCallbackId = command.callbackId;
 
     locationManager.activityType = activityType;
@@ -195,10 +208,20 @@
     NSLog(@"  - stationaryRadius: %ld", (long)stationaryRadius);
     NSLog(@"  - locationTimeout: %ld", (long)locationTimeout);
     NSLog(@"  - desiredAccuracy: %ld", (long)desiredAccuracy);
-    NSLog(@"  - activityType: %@", [command.arguments objectAtIndex:7]);
+    //NSLog(@"  - activityType: %@", [command.arguments objectAtIndex:7]);
     NSLog(@"  - debug: %d", isDebugging);
     NSLog(@"  - stopOnTerminate: %d", stopOnTerminate);
-
+    NSLog(@"  - url: %@", url);
+    NSLog(@"  - method: %@", method);
+    NSLog(@"  - headers: %@", headers);
+    NSLog(@"  - params: %@", params);
+    
+    [[NSUserDefaults standardUserDefaults] setObject:url forKey:@"url"];
+    [[NSUserDefaults standardUserDefaults] setObject:method forKey:@"method"];
+    [[NSUserDefaults standardUserDefaults] setObject:headers forKey:@"headers"];
+    [[NSUserDefaults standardUserDefaults] setObject:params forKey:@"params"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+    
     // ios 8 requires permissions to send local-notifications
     if (isDebugging) {
         UIApplication *app = [UIApplication sharedApplication];
@@ -315,7 +338,7 @@
     NSLog(@"- CDVBackgroundGeoLocation starting attempt");
 
     [locationManager requestAlwaysAuthorization];
-
+    
     if ([self isLocationServicesEnabled] == NO) {
         message = @"Location services are disabled.";
         NSMutableDictionary* posError = [NSMutableDictionary dictionaryWithCapacity:2];
@@ -366,16 +389,16 @@
                 [self.commandDelegate sendPluginResult:result callbackId:self.syncCallbackId];
                 return;
             } else {
-                NSLog(@"- CDVBackgroundGeoLocation start code %lu", (unsigned long)code);
+                NSLog(@"- CDVBackgroundGeoLocation start code %lu", (unsigned long)code);                
             }
         }
     }
 
     enabled = YES;
     UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-
+    
     NSLog(@"- CDVBackgroundGeoLocation start (background? %ld)", (long)state);
-
+    
     [locationManager startMonitoringSignificantLocationChanges];
     if (state == UIApplicationStateBackground) {
         [self setPace:isMoving];
@@ -504,7 +527,7 @@
 
 - (void) deleteAllLocations:(CDVInvokedUrlCommand*)command
 {
-    // TODO: yet to be implemented
+    // TODO: yet to be implemented    
 }
 
 
@@ -728,38 +751,80 @@
         AudioServicesPlaySystemSound (locationSyncSound);
     }
 
-    UIApplicationState state = [[UIApplication sharedApplication] applicationState];
-
-    if (state == UIApplicationStateBackground) {
-        // send POST request if in background
-        NSMutableURLRequest *request =
-        [[NSMutableURLRequest alloc] initWithURL:
-         [NSURL URLWithString:@"myUrl.. "]];
-
-        [request setHTTPMethod:@"POST"];
-        NSError *error;
-        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:data options:0 error:&error];
-        if (jsonData) {
-//             process the data
-            [request setHTTPBody:jsonData];
-            [[NSURLConnection alloc] initWithRequest:request delegate:self];
-        } else {
-            NSLog(@"Unable to serialize the data %@: %@", data, error);
-        }
+    // Build a resultset for javascript callback.
+    NSString *locationType = [data objectForKey:@"location_type"];
+    if ([locationType isEqualToString:@"stationary"]) {
+        [self fireStationaryRegionListeners:data];
+    } else if ([locationType isEqualToString:@"current"]) {
+        CDVPluginResult* result = nil;
+        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
+        [result setKeepCallbackAsBool:YES];
+        [self.commandDelegate sendPluginResult:result callbackId:self.syncCallbackId];
+        
+        url = [[NSUserDefaults standardUserDefaults]
+                                stringForKey:@"url"];
+        
+        headers = [[NSUserDefaults standardUserDefaults] objectForKey:@"headers"];
+        params = [[NSUserDefaults standardUserDefaults] objectForKey:@"params"];
+        
+        NSDictionary *coords = [NSDictionary dictionaryWithObjectsAndKeys:data, @"coords", nil];
+        NSDictionary *location = [NSDictionary dictionaryWithObjectsAndKeys:coords, @"location", nil];
+        
+        [self placePostRequestWithURL:url withData:location withHeaders:headers withParams:params withHandler:^(NSURLResponse *response, NSData *rawData, NSError *error) {
+            NSString *string = [[NSString alloc] initWithData:rawData
+                                                     encoding:NSUTF8StringEncoding];
+            
+            NSHTTPURLResponse* httpResponse = (NSHTTPURLResponse*)response;
+            NSInteger code = [httpResponse statusCode];
+            NSLog(@"%ld", (long)code);
+            
+            if (!(code >= 200 && code < 300)) {
+                NSLog(@"ERROR (%ld): %@", (long)code, string);
+            } else {
+                NSLog(@"OK");
+            }
+        }];
     } else {
-        // Build a resultset for javascript callback.
-        NSString *locationType = [data objectForKey:@"location_type"];
-        if ([locationType isEqualToString:@"stationary"]) {
-            [self fireStationaryRegionListeners:data];
-        } else if ([locationType isEqualToString:@"current"]) {
-            CDVPluginResult* result = nil;
-            result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:data];
-            [result setKeepCallbackAsBool:YES];
-            [self.commandDelegate sendPluginResult:result callbackId:self.syncCallbackId];
-        } else {
-            NSLog(@"- CDVBackgroundGeoLocation#sync could not determine location_type.");
-            [self stopBackgroundTask];
+        NSLog(@"- CDVBackgroundGeoLocation#sync could not determine location_type.");
+        [self stopBackgroundTask];
+    }
+}
+
+-(void)placePostRequestWithURL:(NSString *)action withData:(NSDictionary *)dataToSend withHeaders:(NSDictionary *)headersToSend withParams:(NSDictionary *)paramsToSend withHandler:(void (^)(NSURLResponse *response, NSData *data, NSError *error))ourBlock {
+    NSString *urlString = [NSString stringWithFormat:@"%@", action];
+
+    NSLog(@"%@", urlString);
+    NSLog(@"%@", headers);
+    NSLog(@"%@", params);
+    
+    NSURL *url = [NSURL URLWithString:urlString];
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    
+    NSError *error;
+    
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dataToSend options:0 error:&error];
+    
+    NSString *jsonString;
+    if (! jsonData) {
+        NSLog(@"Got an error: %@", error);
+    } else {
+        jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+        
+        NSData *requestData = [NSData dataWithBytes:[jsonString UTF8String] length:[jsonString lengthOfBytesUsingEncoding:NSUTF8StringEncoding]];
+        
+        [request setHTTPMethod:@"POST"];
+        [request setValue:@"application/json" forHTTPHeaderField:@"Accept"];
+        [request setValue:@"application/json; charset=UTF-8" forHTTPHeaderField:@"Content-Type"];
+        [request setValue:[NSString stringWithFormat:@"%lu", (unsigned long)[requestData length]] forHTTPHeaderField:@"Content-Length"];
+        
+        for (NSString* key in headers) {
+            id value = [headers objectForKey:key];
+            [request setValue:value forHTTPHeaderField:key];
         }
+        
+        [request setHTTPBody: requestData];
+        
+        [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:ourBlock];
     }
 }
 
