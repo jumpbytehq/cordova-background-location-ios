@@ -195,7 +195,12 @@
         params = config[@"params"];
         NSLog(@" params: %@", params);
     }
-    
+    if (config[@"debug"]){
+        isDebugging = [config[@"debug"] boolValue];
+    }
+    if (config[@"stopOnTerminate"]){
+        stopOnTerminate = [config[@"stopOnTerminate"] boolValue];
+    }
     self.syncCallbackId = command.callbackId;
 
     locationManager.activityType = activityType;
